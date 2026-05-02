@@ -20,7 +20,7 @@ function parseCSVLine(line) {
 
 // カードデータ読込
 async function loadCards() {
-  const response = await fetch('/data/cards.csv')
+  const response = await fetch(import.meta.env.BASE_URL + 'data/cards.csv')
   const text = await response.text()
   const lines = text.trim().split('\n')
   const cards = []
@@ -38,7 +38,7 @@ async function loadCards() {
 
 // 画像パス
 function getImagePath(id) {
-  return `/data/images/${id}.jpg`
+  return `${import.meta.env.BASE_URL}data/images/${id}.jpg`
 }
 
 // カードアイテム
