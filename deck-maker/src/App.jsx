@@ -270,11 +270,9 @@ function App() {
     const deck = isDanmaku ? danmakuDeck : normalDeck
     const setDeck = isDanmaku ? setDanmakuDeck : setNormalDeck
     const maxPer = isDanmaku ? 2 : 4
-    const maxTotal = isDanmaku ? 10 : 60
     const isNormal = card.name === '通常弾' || card.name === '通常弾（低速）'
     const effMax = isNormal ? 99 : maxPer
     const curr = deck[card.id] || 0
-    const total = Object.values(deck).reduce((s, c) => s + c, 0)
 
     // 同名カードの合計枚数チェック（プロモカードなど）
     const sameNameCount = Object.entries(deck).reduce((sum, [id, cnt]) => {
@@ -282,7 +280,7 @@ function App() {
       return c?.name === card.name ? sum + cnt : sum
     }, 0)
 
-    if (curr >= effMax || total >= maxTotal) return
+    if (curr >= effMax) return
     if (!isNormal && sameNameCount >= maxPer) return // 同名カード制限
     setDeck({ ...deck, [card.id]: curr + 1 })
   }
@@ -464,7 +462,6 @@ function App() {
 
   const currentDeck = activeTab === 'normal' ? normalDeck : danmakuDeck
   const currentCount = activeTab === 'normal' ? normalCount : danmakuCount
-  const maxCount = activeTab === 'normal' ? 60 : 10
   const counts = typeCounts(currentDeck)
 
   return (
@@ -671,7 +668,7 @@ function App() {
         <aside className={`sv-right ${isMobileDevice && mobileView !== 'deck' ? 'sv-hidden' : ''}`}>
           <div className="sv-deck-tabs">
             <button className={activeTab === 'normal' ? 'active' : ''} onClick={() => setActiveTab('normal')}>
-              通常デッキ <span>40&lt;{normalCount}&lt;60</span>
+              通常デッキ <span>{normalCount}/60</span>
             </button>
             <button className={activeTab === 'danmaku' ? 'active' : ''} onClick={() => setActiveTab('danmaku')}>
               弾幕デッキ <span>{danmakuCount}/10</span>
@@ -680,19 +677,14 @@ function App() {
 
           <div className="sv-deck-stats">
             <div className="sv-deck-count">
-              {activeTab === 'normal' ? (
-                <>
-                  <span className="sv-deck-count-max">40 &lt; </span>
-                  <span className="sv-deck-count-num">{currentCount}</span>
-                  <span className="sv-deck-count-max"> &lt; 60</span>
-                </>
-              ) : (
-                <>
-                  <span className="sv-deck-count-num">{currentCount}</span>
-                  <span className="sv-deck-count-max">/ {maxCount}</span>
-                </>
-              )}
-              {activeTab === 'normal' && currentCount >= 40 && <span className="sv-deck-ok">OK</span>}
+              <span className={`sv-deck-count-num ${
+                (activeTab === 'normal' && currentCount > 60) || (activeTab === 'danmaku' && currentCount > 10)
+                  ? 'sv-deck-over'
+                  : (activeTab === 'normal' && currentCount >= 40 && currentCount <= 60) || (activeTab === 'danmaku' && currentCount === 10)
+                    ? 'sv-deck-valid'
+                    : ''
+              }`}>{currentCount}</span>
+              <span className="sv-deck-count-max">枚 ({activeTab === 'normal' ? '40〜60' : '10'})</span>
             </div>
             {activeTab === 'normal' && (
               <>

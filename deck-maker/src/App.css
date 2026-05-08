@@ -595,6 +595,14 @@ body {
   line-height: 1;
 }
 
+.sv-deck-count-num.sv-deck-valid {
+  color: #4caf50;
+}
+
+.sv-deck-count-num.sv-deck-over {
+  color: #f44336;
+}
+
 .sv-deck-count-max {
   font-family: 'M PLUS Rounded 1c', sans-serif;
   font-size: 0.9rem;
