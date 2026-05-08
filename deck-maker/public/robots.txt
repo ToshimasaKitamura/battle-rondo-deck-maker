@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://toshimasakitamura.github.io/battle-rondo-deck-maker/sitemap.xml
