@@ -1,7 +1,58 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import html2canvas from 'html2canvas'
+import JSZip from 'jszip'
 import KEYWORDS from './keywords'
 import './App.css'
+
+// SHA256ハッシュ生成
+async function sha256(buffer) {
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+// 画像をfetchしてArrayBufferで返す
+async function fetchImageAsBuffer(url) {
+  const response = await fetch(url)
+  return await response.arrayBuffer()
+}
+
+// ユドナリウム用XML生成
+function generateUdonariumXML(cardHashes, backHash, deckName) {
+  let cardsXML = ''
+  cardHashes.forEach(hash => {
+    cardsXML += `
+    <card location.name="table" location.x="-5475" location.y="2750" posZ="0" state="1" rotate="0" owner="" zindex="0">
+      <data name="card" type="undefined" currentValue="undefined">
+        <data name="image" type="undefined" currentValue="undefined">
+          <data name="imageIdentifier" type="image" currentValue="undefined"></data>
+          <data name="front" type="image" currentValue="undefined">${hash}</data>
+          <data name="back" type="image" currentValue="undefined">${backHash}</data>
+        </data>
+        <data name="common" type="undefined" currentValue="undefined">
+          <data name="name" type="undefined" currentValue="undefined">1</data>
+          <data name="size" type="undefined" currentValue="undefined">4</data>
+        </data>
+        <data name="detail" type="undefined" currentValue="undefined"></data>
+      </data>
+    </card>`
+  })
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<card-stack location.name="table" location.x="-5950" location.y="2475" posZ="0" rotate="0" zindex="182" owner="" isShowTotal="true">
+  <data name="card-stack">
+    <data name="image">
+      <data type="image" name="imageIdentifier"></data>
+    </data>
+    <data name="common">
+      <data name="name">${deckName}</data>
+    </data>
+    <data name="detail"></data>
+  </data>
+  <node name="cardRoot">${cardsXML}
+  </node>
+</card-stack>`
+}
 
 // CSVパース
 function parseCSVLine(line) {
@@ -155,16 +206,16 @@ function App() {
   const [cards, setCards] = useState([])
   const [normalDeck, setNormalDeck] = useState({})
   const [danmakuDeck, setDanmakuDeck] = useState({})
-  const [deckTab, setDeckTab] = useState('normal')
-  const [cardTab, setCardTab] = useState('normal') // カード一覧用タブ
+  const [activeTab, setActiveTab] = useState('normal') // カード一覧とデッキリストで共通
   const [modal, setModal] = useState(null)
-  const [normalFilters, setNormalFilters] = useState({ search: '', type: '', cost: '', race: '', set: '', keyword: '' })
+  const [normalFilters, setNormalFilters] = useState({ search: '', type: '', cost: [], race: '', set: '', keyword: '', attack: '', attackOp: '>=', hp: '', hpOp: '>=' })
   const [danmakuFilters, setDanmakuFilters] = useState({ search: '', set: '' })
   const [filterOpen, setFilterOpen] = useState(true)
   const [viewMode, setViewMode] = useState('edit') // 'edit' or 'complete'
-  const [deckName, setDeckName] = useState('マイデッキ')
+  const [deckName, setDeckName] = useState('')
   const deckViewRef = useRef(null)
   const [isMobileDevice, setIsMobileDevice] = useState(false)
+  const [mobileView, setMobileView] = useState('cards') // 'cards' or 'deck' - スマホ用表示切替
 
   useEffect(() => {
     setIsMobileDevice(isMobile())
@@ -175,17 +226,31 @@ function App() {
   const filtered = useMemo(() => {
     return cards.filter(c => {
       // カードタブで弾幕とそれ以外を分離
-      if (cardTab === 'normal' && c.type === '弾幕') return false
-      if (cardTab === 'danmaku' && c.type !== '弾幕') return false
+      if (activeTab === 'normal' && c.type === '弾幕') return false
+      if (activeTab === 'danmaku' && c.type !== '弾幕') return false
 
-      if (cardTab === 'normal') {
+      if (activeTab === 'normal') {
         // 通常カード用フィルター
         if (normalFilters.set && c.set !== normalFilters.set) return false
         if (normalFilters.type && c.type !== normalFilters.type) return false
         if (normalFilters.search && !c.name.includes(normalFilters.search) && !c.id.includes(normalFilters.search) && !c.text?.includes(normalFilters.search)) return false
-        if (normalFilters.cost !== '' && c.cost !== normalFilters.cost) return false
+        if (normalFilters.cost.length > 0 && !normalFilters.cost.includes(c.cost)) return false
         if (normalFilters.race && !c.race?.includes(normalFilters.race)) return false
         if (normalFilters.keyword && !c.text?.includes(normalFilters.keyword)) return false
+        // 攻撃力フィルター
+        if (normalFilters.attack !== '') {
+          const cardAtk = parseInt(c.attack) || 0
+          const filterAtk = parseInt(normalFilters.attack)
+          if (normalFilters.attackOp === '>=' && cardAtk < filterAtk) return false
+          if (normalFilters.attackOp === '<=' && cardAtk > filterAtk) return false
+        }
+        // 体力フィルター
+        if (normalFilters.hp !== '') {
+          const cardHp = parseInt(c.hp) || 0
+          const filterHp = parseInt(normalFilters.hp)
+          if (normalFilters.hpOp === '>=' && cardHp < filterHp) return false
+          if (normalFilters.hpOp === '<=' && cardHp > filterHp) return false
+        }
       } else {
         // 弾幕カード用フィルター
         if (danmakuFilters.set && c.set !== danmakuFilters.set) return false
@@ -193,7 +258,7 @@ function App() {
       }
       return true
     })
-  }, [cards, normalFilters, danmakuFilters, cardTab])
+  }, [cards, normalFilters, danmakuFilters, activeTab])
 
   const races = useMemo(() => [...new Set(cards.map(c => c.race).filter(Boolean))].sort(), [cards])
 
@@ -210,7 +275,15 @@ function App() {
     const effMax = isNormal ? 99 : maxPer
     const curr = deck[card.id] || 0
     const total = Object.values(deck).reduce((s, c) => s + c, 0)
+
+    // 同名カードの合計枚数チェック（プロモカードなど）
+    const sameNameCount = Object.entries(deck).reduce((sum, [id, cnt]) => {
+      const c = cards.find(x => x.id === id)
+      return c?.name === card.name ? sum + cnt : sum
+    }, 0)
+
     if (curr >= effMax || total >= maxTotal) return
+    if (!isNormal && sameNameCount >= maxPer) return // 同名カード制限
     setDeck({ ...deck, [card.id]: curr + 1 })
   }
 
@@ -269,14 +342,29 @@ function App() {
     if (!deckViewRef.current) return
     try {
       setIsSaving(true)
+
+      // スマホの場合、一時的にPC用スタイルを適用
+      const targetEl = deckViewRef.current
+      const wasMobile = isMobileDevice
+      if (wasMobile) {
+        targetEl.classList.add('sv-export-pc-mode')
+      }
+
       // 少し待ってDOMが更新されるのを待つ
       await new Promise(resolve => setTimeout(resolve, 100))
-      const canvas = await html2canvas(deckViewRef.current, {
+      const canvas = await html2canvas(targetEl, {
         backgroundColor: '#1a1625',
         scale: 2,
         useCORS: true,
-        allowTaint: true
+        allowTaint: true,
+        width: 1200, // PC版の幅を固定
       })
+
+      // スタイルを戻す
+      if (wasMobile) {
+        targetEl.classList.remove('sv-export-pc-mode')
+      }
+
       const link = document.createElement('a')
       link.download = `deck_${Date.now()}.png`
       link.href = canvas.toDataURL('image/png')
@@ -294,6 +382,62 @@ function App() {
       setNormalDeck({})
       setDanmakuDeck({})
       setViewMode('edit')
+    }
+  }
+
+  // ユドナリウム用ZIP出力
+  const exportUdonarium = async (deckType) => {
+    try {
+      const isNormalDeck = deckType === 'normal'
+      const deck = isNormalDeck ? normalDeck : danmakuDeck
+      const backImageName = isNormalDeck ? 'normal_back.png' : 'danmaku_back.png'
+      const backHashFixed = isNormalDeck
+        ? '6ef1d99192259bd83611e5b07bfd8cb45bd68657e9a7c5779778e23dca7fd52a'
+        : '799695ab48ad2b92ba1d6c05d4297780d519848d90adf1523f2d0704f27f8e92'
+      const deckLabel = isNormalDeck ? '通常デッキ' : '弾幕デッキ'
+
+      const zip = new JSZip()
+      const cardHashes = []
+      const addedImages = new Set()
+
+      // 裏面画像を追加
+      const backImageBuffer = await fetchImageAsBuffer(import.meta.env.BASE_URL + 'sleeves/' + backImageName)
+      zip.file(backHashFixed + '.png', backImageBuffer)
+      addedImages.add(backHashFixed)
+
+      // 各カードを処理
+      for (const [cardId, count] of Object.entries(deck)) {
+        const imageUrl = getImagePath(cardId)
+        const imageBuffer = await fetchImageAsBuffer(imageUrl)
+        const hash = await sha256(imageBuffer)
+
+        // 画像が未追加なら追加
+        if (!addedImages.has(hash)) {
+          zip.file(hash + '.jpg', imageBuffer)
+          addedImages.add(hash)
+        }
+
+        // 枚数分ハッシュを追加
+        for (let i = 0; i < count; i++) {
+          cardHashes.push(hash)
+        }
+      }
+
+      // XML生成
+      const xmlContent = generateUdonariumXML(cardHashes, backHashFixed, deckName || deckLabel)
+      zip.file('data.xml', xmlContent)
+
+      // ZIPをダウンロード
+      const blob = await zip.generateAsync({ type: 'blob' })
+      const link = document.createElement('a')
+      const timestamp = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '')
+      link.download = `udonarium_${deckLabel}_${timestamp}.zip`
+      link.href = URL.createObjectURL(blob)
+      link.click()
+      URL.revokeObjectURL(link.href)
+    } catch (err) {
+      console.error('ユドナリウム出力エラー:', err)
+      alert('ユドナリウムデータの出力に失敗しました')
     }
   }
 
@@ -318,25 +462,13 @@ function App() {
     return expanded
   }
 
-  const currentDeck = deckTab === 'normal' ? normalDeck : danmakuDeck
-  const currentCount = deckTab === 'normal' ? normalCount : danmakuCount
-  const maxCount = deckTab === 'normal' ? 60 : 10
+  const currentDeck = activeTab === 'normal' ? normalDeck : danmakuDeck
+  const currentCount = activeTab === 'normal' ? normalCount : danmakuCount
+  const maxCount = activeTab === 'normal' ? 60 : 10
   const counts = typeCounts(currentDeck)
 
-  // スマホの場合は専用メッセージを表示
-  if (isMobileDevice) {
-    return (
-      <div className="sv-mobile-message">
-        <div className="sv-mobile-message-content">
-          <h1>PCでデッキを組めい！</h1>
-          <p>このデッキメーカーはPC専用です。</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="sv-app">
+    <div className={`sv-app ${isMobileDevice ? 'sv-mobile' : ''}`}>
       {/* ヘッダー */}
       <header className="sv-header">
         <div className="sv-header-inner">
@@ -345,20 +477,32 @@ function App() {
       </header>
 
       <main className="sv-main">
+        {/* スマホ用：カード/デッキ切り替えタブ */}
+        {isMobileDevice && (
+          <div className="sv-mobile-nav">
+            <button className={mobileView === 'cards' ? 'active' : ''} onClick={() => setMobileView('cards')}>
+              カード一覧
+            </button>
+            <button className={mobileView === 'deck' ? 'active' : ''} onClick={() => setMobileView('deck')}>
+              デッキ ({normalCount}, {danmakuCount})
+            </button>
+          </div>
+        )}
+
         {/* 左：カード一覧 */}
-        <section className="sv-left">
+        <section className={`sv-left ${isMobileDevice && mobileView !== 'cards' ? 'sv-hidden' : ''}`}>
           {/* カードタブ */}
           <div className="sv-card-tabs">
-            <button className={cardTab === 'normal' ? 'active' : ''} onClick={() => setCardTab('normal')}>
+            <button className={activeTab === 'normal' ? 'active' : ''} onClick={() => setActiveTab('normal')}>
               通常カード
             </button>
-            <button className={cardTab === 'danmaku' ? 'active' : ''} onClick={() => setCardTab('danmaku')}>
+            <button className={activeTab === 'danmaku' ? 'active' : ''} onClick={() => setActiveTab('danmaku')}>
               弾幕カード
             </button>
           </div>
 
           {/* フィルター（通常カードタブ） */}
-          {cardTab === 'normal' && (
+          {activeTab === 'normal' && (
             <div className="sv-filter-section">
               <div className="sv-filter-header" onClick={() => setFilterOpen(!filterOpen)}>
                 <span>絞り込み検索</span>
@@ -398,9 +542,17 @@ function App() {
                   <div className="sv-filter-row">
                     <label>コスト</label>
                     <div className="sv-filter-btns cost">
-                      {['', '0', '1', '2', '3', '4', '5', '6', '7', '8'].map(c => (
-                        <button key={c} className={normalFilters.cost === c ? 'active' : ''} onClick={() => setNormalFilters({ ...normalFilters, cost: c })}>
-                          {c === '' ? '全' : c === '8' ? '8+' : c}
+                      <button className={normalFilters.cost.length === 0 ? 'active' : ''} onClick={() => setNormalFilters({ ...normalFilters, cost: [] })}>
+                        全
+                      </button>
+                      {['0', '1', '2', '3', '4', '5', '6', '7', '8'].map(c => (
+                        <button key={c} className={normalFilters.cost.includes(c) ? 'active' : ''} onClick={() => {
+                          const newCost = normalFilters.cost.includes(c)
+                            ? normalFilters.cost.filter(x => x !== c)
+                            : [...normalFilters.cost, c]
+                          setNormalFilters({ ...normalFilters, cost: newCost })
+                        }}>
+                          {c === '8' ? '8+' : c}
                         </button>
                       ))}
                     </div>
@@ -425,7 +577,39 @@ function App() {
                       ))}
                     </div>
                   </div>
-                  <button className="sv-filter-reset" onClick={() => setNormalFilters({ search: '', type: '', cost: '', race: '', set: '', keyword: '' })}>
+                  <div className="sv-filter-row sv-filter-stats">
+                    <label>攻撃力</label>
+                    <div className="sv-filter-stat-input">
+                      <select value={normalFilters.attackOp} onChange={e => setNormalFilters({ ...normalFilters, attackOp: e.target.value })}>
+                        <option value=">=">以上</option>
+                        <option value="<=">以下</option>
+                      </select>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="-"
+                        value={normalFilters.attack}
+                        onChange={e => setNormalFilters({ ...normalFilters, attack: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="sv-filter-row sv-filter-stats">
+                    <label>体力</label>
+                    <div className="sv-filter-stat-input">
+                      <select value={normalFilters.hpOp} onChange={e => setNormalFilters({ ...normalFilters, hpOp: e.target.value })}>
+                        <option value=">=">以上</option>
+                        <option value="<=">以下</option>
+                      </select>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="-"
+                        value={normalFilters.hp}
+                        onChange={e => setNormalFilters({ ...normalFilters, hp: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <button className="sv-filter-reset" onClick={() => setNormalFilters({ search: '', type: '', cost: [], race: '', set: '', keyword: '', attack: '', attackOp: '>=', hp: '', hpOp: '>=' })}>
                     条件をリセット
                   </button>
                 </div>
@@ -434,7 +618,7 @@ function App() {
           )}
 
           {/* フィルター（弾幕カードタブ） */}
-          {cardTab === 'danmaku' && (
+          {activeTab === 'danmaku' && (
             <div className="sv-filter-section">
               <div className="sv-filter-header" onClick={() => setFilterOpen(!filterOpen)}>
                 <span>絞り込み検索</span>
@@ -472,7 +656,7 @@ function App() {
           {/* カード一覧 */}
           <div className="sv-cards-section">
             <div className="sv-cards-header">
-              <span>{cardTab === 'normal' ? '通常カード一覧' : '弾幕カード一覧'}</span>
+              <span>{activeTab === 'normal' ? '通常カード一覧' : '弾幕カード一覧'}</span>
               <span className="sv-cards-count">{filtered.length}件</span>
             </div>
             <div className="sv-cards-grid">
@@ -484,12 +668,12 @@ function App() {
         </section>
 
         {/* 右：デッキ */}
-        <aside className="sv-right">
+        <aside className={`sv-right ${isMobileDevice && mobileView !== 'deck' ? 'sv-hidden' : ''}`}>
           <div className="sv-deck-tabs">
-            <button className={deckTab === 'normal' ? 'active' : ''} onClick={() => setDeckTab('normal')}>
+            <button className={activeTab === 'normal' ? 'active' : ''} onClick={() => setActiveTab('normal')}>
               通常デッキ <span>{normalCount}/60</span>
             </button>
-            <button className={deckTab === 'danmaku' ? 'active' : ''} onClick={() => setDeckTab('danmaku')}>
+            <button className={activeTab === 'danmaku' ? 'active' : ''} onClick={() => setActiveTab('danmaku')}>
               弾幕デッキ <span>{danmakuCount}/10</span>
             </button>
           </div>
@@ -498,9 +682,9 @@ function App() {
             <div className="sv-deck-count">
               <span className="sv-deck-count-num">{currentCount}</span>
               <span className="sv-deck-count-max">/ {maxCount}</span>
-              {deckTab === 'normal' && currentCount >= 40 && <span className="sv-deck-ok">OK</span>}
+              {activeTab === 'normal' && currentCount >= 40 && <span className="sv-deck-ok">OK</span>}
             </div>
-            {deckTab === 'normal' && (
+            {activeTab === 'normal' && (
               <>
                 <CostGraph deck={currentDeck} cards={cards} />
                 <div className="sv-deck-types">
@@ -582,6 +766,12 @@ function App() {
             <div className="sv-complete-actions">
               <button onClick={saveDeckAsImage} className="sv-complete-save-btn">
                 画像として保存
+              </button>
+              <button onClick={() => exportUdonarium('normal')} className="sv-complete-udonarium-btn">
+                通常デッキ（ユドナリウム）
+              </button>
+              <button onClick={() => exportUdonarium('danmaku')} className="sv-complete-udonarium-btn">
+                弾幕デッキ（ユドナリウム）
               </button>
               <button onClick={() => setViewMode('edit')} className="sv-complete-edit-btn">
                 デッキ編集に戻る

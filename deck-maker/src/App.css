@@ -306,6 +306,51 @@ body {
   border-color: #ff6b9d;
 }
 
+/* 攻撃力・体力フィルター */
+.sv-filter-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sv-filter-stat-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sv-filter-stat-input select {
+  padding: 8px 12px;
+  background: #1a1625;
+  border: 2px solid #3d3650;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.8rem;
+}
+
+.sv-filter-stat-input select:focus {
+  border-color: #ff6b9d;
+}
+
+.sv-filter-stat-input input[type="number"] {
+  width: 70px;
+  padding: 8px 12px;
+  background: #1a1625;
+  border: 2px solid #3d3650;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+.sv-filter-stat-input input[type="number"]:focus {
+  border-color: #ff6b9d;
+  box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.2);
+}
+
+.sv-filter-stat-input input[type="number"]::placeholder {
+  color: #6a6580;
+}
+
 .sv-filter-reset {
   align-self: flex-end;
   padding: 10px 22px;
@@ -1175,6 +1220,17 @@ body {
   gap: 12px;
 }
 
+/* 画像出力時のPC用スタイル（スマホでも横長出力） */
+.sv-export-pc-mode {
+  width: 1200px !important;
+  max-width: none !important;
+}
+
+.sv-export-pc-mode .sv-complete-cards {
+  grid-template-columns: repeat(10, 1fr) !important;
+  gap: 8px !important;
+}
+
 .sv-complete-card {
   position: relative;
   background: #1a1625;
@@ -1244,28 +1300,191 @@ body {
   color: #ff6b9d;
 }
 
-/* スマホ用メッセージ */
-.sv-mobile-message {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background: #1a1625;
-  padding: 24px;
+.sv-complete-udonarium-btn {
+  background: #252035;
+  color: #ffa500;
+  border: 2px solid #ffa500 !important;
 }
 
-.sv-mobile-message-content {
-  text-align: center;
+.sv-complete-udonarium-btn:hover {
+  background: #ffa500;
+  color: #fff;
 }
 
-.sv-mobile-message-content h1 {
-  font-size: 2rem;
-  font-weight: 800;
-  color: #ff6b9d;
-  margin-bottom: 16px;
+/* スマホ用ナビゲーション */
+.sv-mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #252035;
+  border-top: 2px solid #3d3650;
+  z-index: 500;
 }
 
-.sv-mobile-message-content p {
-  font-size: 1rem;
+.sv-mobile-nav button {
+  flex: 1;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
   color: #b8b5c8;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sv-mobile-nav button.active {
+  color: #ff6b9d;
+  background: #1a1625;
+  border-top: 3px solid #ff6b9d;
+}
+
+/* スマホ対応 */
+@media (max-width: 768px) {
+  /* スマホ用タブ切り替え - 非表示 */
+  .sv-app.sv-mobile .sv-hidden {
+    display: none !important;
+  }
+
+  .sv-mobile-nav {
+    display: flex;
+  }
+
+  .sv-app.sv-mobile .sv-header {
+    margin-right: 0;
+    padding: 12px 16px;
+  }
+
+  .sv-app.sv-mobile .sv-main {
+    flex-direction: column;
+    height: auto;
+    padding: 12px;
+    padding-bottom: 70px; /* 下部固定ナビの高さ分 */
+  }
+
+  .sv-app.sv-mobile .sv-left {
+    width: 100%;
+    max-width: 100%;
+    margin-right: 0;
+    height: auto;
+    border-right: none;
+  }
+
+  .sv-app.sv-mobile .sv-right {
+    position: static;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    padding: 0;
+    background: transparent;
+  }
+
+  .sv-app.sv-mobile .sv-logo {
+    font-size: 1rem;
+  }
+
+  .sv-app.sv-mobile .sv-card-tabs button {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+
+  .sv-app.sv-mobile .sv-filter-section {
+    margin: 0;
+  }
+
+  .sv-app.sv-mobile .sv-filter-body {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .sv-app.sv-mobile .sv-filter-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sv-app.sv-mobile .sv-filter-row label {
+    width: 100%;
+    margin-bottom: 4px;
+  }
+
+  .sv-app.sv-mobile .sv-filter-btns {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .sv-app.sv-mobile .sv-filter-btns button {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+  }
+
+  .sv-app.sv-mobile .sv-cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .sv-app.sv-mobile .sv-deck-tabs button {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+
+  .sv-app.sv-mobile .sv-deck-stats {
+    padding: 12px;
+  }
+
+  .sv-app.sv-mobile .sv-deck-list {
+    min-height: 300px;
+  }
+
+  .sv-app.sv-mobile .sv-deck-actions {
+    padding: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sv-app.sv-mobile .sv-deck-actions button {
+    flex: 1 1 45%;
+    padding: 10px 12px;
+    font-size: 0.8rem;
+  }
+
+  /* モーダル */
+  .sv-app.sv-mobile .sv-modal {
+    width: 95%;
+    max-height: 90vh;
+    padding: 16px;
+  }
+
+  .sv-app.sv-mobile .sv-modal-body {
+    flex-direction: column;
+  }
+
+  .sv-app.sv-mobile .sv-modal-img {
+    max-width: 200px;
+    margin: 0 auto 16px;
+  }
+
+  /* 完成画面 */
+  .sv-app.sv-mobile .sv-complete-overlay {
+    padding: 16px;
+  }
+
+  .sv-app.sv-mobile .sv-complete-cards {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+
+  .sv-app.sv-mobile .sv-complete-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sv-app.sv-mobile .sv-complete-actions button {
+    flex: 1 1 45%;
+    padding: 12px;
+    font-size: 0.8rem;
+  }
 }
