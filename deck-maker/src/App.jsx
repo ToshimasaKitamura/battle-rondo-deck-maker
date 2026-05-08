@@ -671,7 +671,7 @@ function App() {
         <aside className={`sv-right ${isMobileDevice && mobileView !== 'deck' ? 'sv-hidden' : ''}`}>
           <div className="sv-deck-tabs">
             <button className={activeTab === 'normal' ? 'active' : ''} onClick={() => setActiveTab('normal')}>
-              通常デッキ <span>{normalCount}/60</span>
+              通常デッキ <span>40&lt;{normalCount}&lt;60</span>
             </button>
             <button className={activeTab === 'danmaku' ? 'active' : ''} onClick={() => setActiveTab('danmaku')}>
               弾幕デッキ <span>{danmakuCount}/10</span>
@@ -680,8 +680,18 @@ function App() {
 
           <div className="sv-deck-stats">
             <div className="sv-deck-count">
-              <span className="sv-deck-count-num">{currentCount}</span>
-              <span className="sv-deck-count-max">/ {maxCount}</span>
+              {activeTab === 'normal' ? (
+                <>
+                  <span className="sv-deck-count-max">40 &lt; </span>
+                  <span className="sv-deck-count-num">{currentCount}</span>
+                  <span className="sv-deck-count-max"> &lt; 60</span>
+                </>
+              ) : (
+                <>
+                  <span className="sv-deck-count-num">{currentCount}</span>
+                  <span className="sv-deck-count-max">/ {maxCount}</span>
+                </>
+              )}
               {activeTab === 'normal' && currentCount >= 40 && <span className="sv-deck-ok">OK</span>}
             </div>
             {activeTab === 'normal' && (
