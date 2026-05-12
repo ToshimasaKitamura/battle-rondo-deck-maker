@@ -664,7 +664,7 @@ function App() {
                     </div>
                   </div>
                   <div className="sv-filter-row">
-                    <label>キーワード能力</label>
+                    <label>キーワード</label>
                     <div className="sv-filter-btns sv-filter-btns-wrap">
                       <button className={danmakuFilters.keyword === '' ? 'active' : ''} onClick={() => setDanmakuFilters({ ...danmakuFilters, keyword: '' })}>
                         全て
