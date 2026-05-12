@@ -1,0 +1,21 @@
+{
+  "name": "東方バトルロンド デッキメーカー",
+  "short_name": "デッキメーカー",
+  "description": "東方バトルロンド（東方交戦輪舞曲）のデッキ構築ツール",
+  "icons": [
+    {
+      "src": "/battle-rondo-deck-maker/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/battle-rondo-deck-maker/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#863bff",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "start_url": "/battle-rondo-deck-maker/"
+}
