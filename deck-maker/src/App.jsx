@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import html2canvas from 'html2canvas'
 import JSZip from 'jszip'
 import KEYWORDS from './keywords'
+import DANMAKU_KEYWORDS from './danmakuKeywords'
+import cardKeywordsData from './cardKeywords.json'
 import './App.css'
 
 // SHA256ハッシュ生成
@@ -209,7 +211,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('normal') // カード一覧とデッキリストで共通
   const [modal, setModal] = useState(null)
   const [normalFilters, setNormalFilters] = useState({ search: '', type: '', cost: [], race: '', set: '', keyword: '', attack: '', attackOp: '>=', hp: '', hpOp: '>=' })
-  const [danmakuFilters, setDanmakuFilters] = useState({ search: '', set: '' })
+  const [danmakuFilters, setDanmakuFilters] = useState({ search: '', set: '', keyword: '' })
   const [filterOpen, setFilterOpen] = useState(true)
   const [viewMode, setViewMode] = useState('edit') // 'edit' or 'complete'
   const [deckName, setDeckName] = useState('')
@@ -236,7 +238,13 @@ function App() {
         if (normalFilters.search && !c.name.includes(normalFilters.search) && !c.id.includes(normalFilters.search) && !c.text?.includes(normalFilters.search)) return false
         if (normalFilters.cost.length > 0 && !normalFilters.cost.includes(c.cost)) return false
         if (normalFilters.race && !c.race?.includes(normalFilters.race)) return false
-        if (normalFilters.keyword && !c.text?.includes(normalFilters.keyword)) return false
+        // キーワード能力を保有しているかチェック（cardKeywords.jsonを使用）
+        if (normalFilters.keyword) {
+          const cardKeywordInfo = cardKeywordsData[c.id]
+          if (!cardKeywordInfo || !cardKeywordInfo.keywords.includes(normalFilters.keyword)) {
+            return false
+          }
+        }
         // 攻撃力フィルター
         if (normalFilters.attack !== '') {
           const cardAtk = parseInt(c.attack) || 0
@@ -255,6 +263,16 @@ function App() {
         // 弾幕カード用フィルター
         if (danmakuFilters.set && c.set !== danmakuFilters.set) return false
         if (danmakuFilters.search && !c.name.includes(danmakuFilters.search) && !c.id.includes(danmakuFilters.search) && !c.text?.includes(danmakuFilters.search)) return false
+        // 弾幕カードのキーワード能力チェック（テキスト先頭のキーワードで判定）
+        if (danmakuFilters.keyword) {
+          const text = c.text || ''
+          const keyword = danmakuFilters.keyword
+          // テキストの最初の部分（：や。の前）にキーワードが含まれているかチェック
+          const firstPart = text.split(/[：。]/)[0]
+          if (!firstPart.includes(keyword)) {
+            return false
+          }
+        }
       }
       return true
     })
@@ -274,14 +292,17 @@ function App() {
     const effMax = isNormal ? 99 : maxPer
     const curr = deck[card.id] || 0
 
-    // 同名カードの合計枚数チェック（プロモカードなど）
-    const sameNameCount = Object.entries(deck).reduce((sum, [id, cnt]) => {
-      const c = cards.find(x => x.id === id)
-      return c?.name === card.name ? sum + cnt : sum
+    // 識別番号を取得（IDから「PR01」などのサフィックスを除いた部分）
+    const getBaseId = (id) => id.replace(/PR\d+$/, '')
+    const cardBaseId = getBaseId(card.id)
+
+    // 同じ識別番号のカードの合計枚数チェック（プロモと通常版は同じ識別番号）
+    const sameBaseIdCount = Object.entries(deck).reduce((sum, [id, cnt]) => {
+      return getBaseId(id) === cardBaseId ? sum + cnt : sum
     }, 0)
 
     if (curr >= effMax) return
-    if (!isNormal && sameNameCount >= maxPer) return // 同名カード制限
+    if (!isNormal && sameBaseIdCount >= maxPer) return // 同じ識別番号のカード制限
     setDeck({ ...deck, [card.id]: curr + 1 })
   }
 
@@ -642,7 +663,20 @@ function App() {
                       ))}
                     </div>
                   </div>
-                  <button className="sv-filter-reset" onClick={() => setDanmakuFilters({ search: '', set: '' })}>
+                  <div className="sv-filter-row">
+                    <label>キーワード能力</label>
+                    <div className="sv-filter-btns sv-filter-btns-wrap">
+                      <button className={danmakuFilters.keyword === '' ? 'active' : ''} onClick={() => setDanmakuFilters({ ...danmakuFilters, keyword: '' })}>
+                        全て
+                      </button>
+                      {DANMAKU_KEYWORDS.map(kw => (
+                        <button key={kw} className={danmakuFilters.keyword === kw ? 'active' : ''} onClick={() => setDanmakuFilters({ ...danmakuFilters, keyword: kw })}>
+                          {kw}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button className="sv-filter-reset" onClick={() => setDanmakuFilters({ search: '', set: '', keyword: '' })}>
                     条件をリセット
                   </button>
                 </div>
