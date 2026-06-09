@@ -8,4 +8,8 @@ export default defineConfig({
   server: {
     host: true, // ネットワークからのアクセスを許可
   },
+  build: {
+    copyPublicDir: true,
+  },
+  publicDir: 'public',
 })

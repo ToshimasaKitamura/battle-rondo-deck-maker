@@ -211,7 +211,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('normal') // カード一覧とデッキリストで共通
   const [modal, setModal] = useState(null)
   const [normalFilters, setNormalFilters] = useState({ search: '', type: '', cost: [], race: '', set: '', keyword: '', attack: '', attackOp: '>=', hp: '', hpOp: '>=' })
-  const [danmakuFilters, setDanmakuFilters] = useState({ search: '', set: '', keyword: '' })
+  const [danmakuFilters, setDanmakuFilters] = useState({ search: '', set: '', keyword: '', danmakuType: '' })
   const [filterOpen, setFilterOpen] = useState(true)
   const [viewMode, setViewMode] = useState('edit') // 'edit' or 'complete'
   const [deckName, setDeckName] = useState('')
@@ -237,7 +237,7 @@ function App() {
         if (normalFilters.type && c.type !== normalFilters.type) return false
         if (normalFilters.search && !c.name.includes(normalFilters.search) && !c.id.includes(normalFilters.search) && !c.text?.includes(normalFilters.search)) return false
         if (normalFilters.cost.length > 0 && !normalFilters.cost.includes(c.cost)) return false
-        if (normalFilters.race && !c.race?.includes(normalFilters.race)) return false
+        if (normalFilters.race && c.race !== normalFilters.race) return false
         // キーワード能力を保有しているかチェック（cardKeywords.jsonを使用）
         if (normalFilters.keyword) {
           const cardKeywordInfo = cardKeywordsData[c.id]
@@ -263,6 +263,12 @@ function App() {
         // 弾幕カード用フィルター
         if (danmakuFilters.set && c.set !== danmakuFilters.set) return false
         if (danmakuFilters.search && !c.name.includes(danmakuFilters.search) && !c.id.includes(danmakuFilters.search) && !c.text?.includes(danmakuFilters.search)) return false
+        // 弾幕タイプフィルター（通常弾幕/特殊弾幕）
+        if (danmakuFilters.danmakuType) {
+          const isNormalDanmaku = c.name === '通常弾' || c.name === '通常弾（低速）'
+          if (danmakuFilters.danmakuType === 'normal' && !isNormalDanmaku) return false
+          if (danmakuFilters.danmakuType === 'special' && isNormalDanmaku) return false
+        }
         // 弾幕カードのキーワード能力チェック（テキスト先頭のキーワードで判定）
         if (danmakuFilters.keyword) {
           const text = c.text || ''
@@ -654,6 +660,20 @@ function App() {
                     {danmakuFilters.search && <button className="sv-clear-btn" onClick={() => setDanmakuFilters({ ...danmakuFilters, search: '' })}>×</button>}
                   </div>
                   <div className="sv-filter-row">
+                    <label>弾幕タイプ</label>
+                    <div className="sv-filter-btns">
+                      <button className={danmakuFilters.danmakuType === '' ? 'active' : ''} onClick={() => setDanmakuFilters({ ...danmakuFilters, danmakuType: '' })}>
+                        全て
+                      </button>
+                      <button className={danmakuFilters.danmakuType === 'normal' ? 'active' : ''} onClick={() => setDanmakuFilters({ ...danmakuFilters, danmakuType: 'normal' })}>
+                        通常弾幕
+                      </button>
+                      <button className={danmakuFilters.danmakuType === 'special' ? 'active' : ''} onClick={() => setDanmakuFilters({ ...danmakuFilters, danmakuType: 'special' })}>
+                        特殊弾幕
+                      </button>
+                    </div>
+                  </div>
+                  <div className="sv-filter-row">
                     <label>セット</label>
                     <div className="sv-filter-btns">
                       {['', 'スターター', '第一弾', '第二弾', 'プロモ'].map(s => (
@@ -676,7 +696,7 @@ function App() {
                       ))}
                     </div>
                   </div>
-                  <button className="sv-filter-reset" onClick={() => setDanmakuFilters({ search: '', set: '', keyword: '' })}>
+                  <button className="sv-filter-reset" onClick={() => setDanmakuFilters({ search: '', set: '', keyword: '', danmakuType: '' })}>
                     条件をリセット
                   </button>
                 </div>
