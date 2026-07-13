@@ -546,7 +546,7 @@ function App() {
                   <div className="sv-filter-row">
                     <label>セット</label>
                     <div className="sv-filter-btns">
-                      {['', 'スターター', '第一弾', '第二弾', '第三弾', 'プロモ'].map(s => (
+                      {['', 'スターター', '第一弾', '第二弾', 'プロモ'].map(s => (
                         <button key={s} className={normalFilters.set === s ? 'active' : ''} onClick={() => setNormalFilters({ ...normalFilters, set: s })}>
                           {s || '全て'}
                         </button>
@@ -676,7 +676,7 @@ function App() {
                   <div className="sv-filter-row">
                     <label>セット</label>
                     <div className="sv-filter-btns">
-                      {['', 'スターター', '第一弾', '第二弾', '第三弾', 'プロモ'].map(s => (
+                      {['', 'スターター', '第一弾', '第二弾', 'プロモ'].map(s => (
                         <button key={s} className={danmakuFilters.set === s ? 'active' : ''} onClick={() => setDanmakuFilters({ ...danmakuFilters, set: s })}>
                           {s || '全て'}
                         </button>
