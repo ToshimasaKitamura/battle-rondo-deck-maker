@@ -236,7 +236,12 @@ function App() {
         if (normalFilters.set && c.set !== normalFilters.set) return false
         if (normalFilters.type && c.type !== normalFilters.type) return false
         if (normalFilters.search && !c.name.includes(normalFilters.search) && !c.id.includes(normalFilters.search) && !c.text?.includes(normalFilters.search)) return false
-        if (normalFilters.cost.length > 0 && !normalFilters.cost.includes(c.cost)) return false
+        // コストは完全一致だが「8」は8以上をまとめて対象にする
+        if (normalFilters.cost.length > 0) {
+          const cardCost = parseInt(c.cost) || 0
+          const matched = normalFilters.cost.some(f => f === '8' ? cardCost >= 8 : f === c.cost)
+          if (!matched) return false
+        }
         if (normalFilters.race && c.race !== normalFilters.race) return false
         // キーワード能力を保有しているかチェック（cardKeywords.jsonを使用）
         if (normalFilters.keyword) {
