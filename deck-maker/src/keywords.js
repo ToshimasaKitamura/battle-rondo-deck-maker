@@ -16,7 +16,8 @@ const KEYWORDS = [
   '登場耐性',
   'エンチャント',
   'インスタント',
-  '装備'
+  '装備',
+  'ユニーク'
 ]
 
 export default KEYWORDS
