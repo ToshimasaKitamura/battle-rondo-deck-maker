@@ -94,6 +94,17 @@ function getImagePath(id) {
   return `${import.meta.env.BASE_URL}data/images/${id}.jpg`
 }
 
+// セット一覧（フィルタボタン用）
+const SETS = ['', '第一弾', '第二弾', '三魔女', 'スターター（自機組）', 'スターター（紅魔館）', 'スターター（妖々夢）', 'ミニ拡張', 'プロモ']
+
+// セット一致判定。『スターター共通』カードは第一弾スターター（自機組・紅魔館）に相乗りして表示する
+function matchSet(cardSet, filterSet) {
+  if (!filterSet) return true
+  if (cardSet === filterSet) return true
+  if (cardSet === 'スターター共通' && (filterSet === 'スターター（自機組）' || filterSet === 'スターター（紅魔館）')) return true
+  return false
+}
+
 // カードアイテム
 function CardItem({ card, onClick, onAdd, count }) {
   const [err, setErr] = useState(false)
@@ -233,7 +244,7 @@ function App() {
 
       if (activeTab === 'normal') {
         // 通常カード用フィルター
-        if (normalFilters.set && c.set !== normalFilters.set) return false
+        if (!matchSet(c.set, normalFilters.set)) return false
         if (normalFilters.type && c.type !== normalFilters.type) return false
         if (normalFilters.search && !c.name.includes(normalFilters.search) && !c.id.includes(normalFilters.search) && !c.text?.includes(normalFilters.search)) return false
         // コストは完全一致だが「8」は8以上をまとめて対象にする
@@ -266,7 +277,7 @@ function App() {
         }
       } else {
         // 弾幕カード用フィルター
-        if (danmakuFilters.set && c.set !== danmakuFilters.set) return false
+        if (!matchSet(c.set, danmakuFilters.set)) return false
         if (danmakuFilters.search && !c.name.includes(danmakuFilters.search) && !c.id.includes(danmakuFilters.search) && !c.text?.includes(danmakuFilters.search)) return false
         // 弾幕タイプフィルター（通常弾幕/特殊弾幕）
         if (danmakuFilters.danmakuType) {
@@ -551,7 +562,7 @@ function App() {
                   <div className="sv-filter-row">
                     <label>セット</label>
                     <div className="sv-filter-btns">
-                      {['', 'スターター', '第一弾', '第二弾', 'プロモ'].map(s => (
+                      {SETS.map(s => (
                         <button key={s} className={normalFilters.set === s ? 'active' : ''} onClick={() => setNormalFilters({ ...normalFilters, set: s })}>
                           {s || '全て'}
                         </button>
@@ -681,7 +692,7 @@ function App() {
                   <div className="sv-filter-row">
                     <label>セット</label>
                     <div className="sv-filter-btns">
-                      {['', 'スターター', '第一弾', '第二弾', 'プロモ'].map(s => (
+                      {SETS.map(s => (
                         <button key={s} className={danmakuFilters.set === s ? 'active' : ''} onClick={() => setDanmakuFilters({ ...danmakuFilters, set: s })}>
                           {s || '全て'}
                         </button>
